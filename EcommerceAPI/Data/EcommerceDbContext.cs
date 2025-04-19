@@ -119,5 +119,15 @@ namespace EcommerceAPI.Data
                 }
                 );
         }
+
+        public DbSet<Customer> Customer { get; set; }
+
+        public DbSet<Order> Order { get; set; }
+
+        public DbSet<OrderItem> OrderItems { get; set; }
+
+        public DbSet<Product> Products { get; set; }
+
+
     }
 }
