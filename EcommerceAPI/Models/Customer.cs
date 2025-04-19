@@ -16,7 +16,7 @@ namespace EcommerceAPI.Models
 
         [Required(ErrorMessage = "Password is required")]
         [StringLength(100)]
-        public string password { get; set; }
+        public string Password { get; set; }
 
         [JsonIgnore]
         public List<Order> orders { get; set; }
