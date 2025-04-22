@@ -86,7 +86,7 @@ namespace EcommerceAPI.Controllers
         // Demonstrates default binding (from route or query).
         // Endpoint: GET /api/customers/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<Customer>> GetCustomer([FromRoute] string id)
+        public async Task<ActionResult<Customer>> GetCustomer([FromRoute] int id)
         {
 
             try
