@@ -101,7 +101,7 @@ namespace EcommerceAPI.Controllers
         // Demonstrates multiple binding attributes.
         // Endpoint: PUT /api/products/UpdateProductPrice/{id}?price={newPrice}
         [HttpPut("UpdateProductPrice/{id}")]
-        public async Task<IActionResult> UpdateProductPrice([FromRoute] string id, [FromQuery] decimal price)
+        public async Task<ActionResult> UpdateProductPrice([FromRoute] string id, [FromQuery] decimal price)
         {
             var product = await _context.Products.FindAsync(id);
 
