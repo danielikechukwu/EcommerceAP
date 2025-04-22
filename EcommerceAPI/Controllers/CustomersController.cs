@@ -28,11 +28,14 @@ namespace EcommerceAPI.Controllers
             try
             {
                 //Check if email already exist
-                if (await _context.Customer.AnyAsync(c => c.Email == registerCustomer.Email))
+                bool exists = await _context.Customer.AnyAsync(c => c.Email == registerCustomer.Email);
+
+                if (exists)
                 {
-                    return BadRequest("Sorry email already exist");
+                    return BadRequest("Customer with email already exist");
                 }
 
+                //Create new customer
                 var customer = new Customer
                 {
                     Name = registerCustomer.Name,
