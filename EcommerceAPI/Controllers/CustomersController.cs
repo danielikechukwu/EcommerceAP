@@ -25,23 +25,32 @@ namespace EcommerceAPI.Controllers
         public async Task<ActionResult<Customer>> RegisterCustomer([FromForm] CustomerRegistrationDTO registerCustomer)
         {
 
-            //Check if email already exist
-            if (await _context.Customer.AnyAsync(c => c.Email == registerCustomer.Email))
+            try
             {
-                return BadRequest("Sorry email already exist");
+                //Check if email already exist
+                if (await _context.Customer.AnyAsync(c => c.Email == registerCustomer.Email))
+                {
+                    return BadRequest("Sorry email already exist");
+                }
+
+                var customer = new Customer
+                {
+                    Name = registerCustomer.Name,
+                    Email = registerCustomer.Email,
+                    Password = registerCustomer.Password
+                };
+
+                _context.Customer.Add(customer);
+
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
+
             }
-
-            var customer = new Customer { 
-                Name = registerCustomer.Name,
-                Email = registerCustomer.Email,
-                Password = registerCustomer.Password
-            };
-
-            _context.Customer.Add(customer);
-
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         // Login a customer.
@@ -50,20 +59,27 @@ namespace EcommerceAPI.Controllers
         [HttpPost("login")]
         public async Task<ActionResult> Login([FromHeader(Name = "X-Client-ID")] string clientId, [FromBody] CustomerLoginDTO loginDTO)
         {
-            //Check the header
-            if (string.IsNullOrWhiteSpace(clientId))
-                return BadRequest("Missing X-Client-ID header, Client Unauthorized");
 
-            var customer = await _context.Customer.FirstOrDefaultAsync(c => c.Email == loginDTO.Email && c.Password == loginDTO.Password);
-
-            if (customer == null)
+            try
             {
-                return Unauthorized("Invalid email and password");
+                //Check the header
+                if (string.IsNullOrWhiteSpace(clientId))
+                    return BadRequest("Missing X-Client-ID header, Client Unauthorized");
+
+                var customer = await _context.Customer.FirstOrDefaultAsync(c => c.Email == loginDTO.Email && c.Password == loginDTO.Password);
+
+                if (customer == null)
+                {
+                    return Unauthorized("Invalid email and password");
+                }
+
+                //Generate JWT or other token in real application
+                return Ok(new { Message = "Authentication successful." });
             }
-
-            //Generate JWT or other token in real application
-            return Ok(new { Message = "Authentication successful."});
-
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         // Get customer details.
@@ -72,14 +88,22 @@ namespace EcommerceAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Customer>> GetCustomer([FromRoute] string id)
         {
-            var customer = await _context.Customer.FindAsync(id);
 
-            if(customer == null)
+            try
             {
-                return NotFound("Sorry result could not be found");
-            }
+                var customer = await _context.Customer.FindAsync(id);
 
-            return Ok(customer);
+                if (customer == null)
+                {
+                    return NotFound("Sorry result could not be found");
+                }
+
+                return Ok(customer);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
     }

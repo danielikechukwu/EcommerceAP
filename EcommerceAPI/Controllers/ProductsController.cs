@@ -29,31 +29,39 @@ namespace EcommerceAPI.Controllers
             [FromQuery] decimal? minPrice, 
             [FromQuery] decimal? maxPrice)
         {
-            var query = _context.Products.AsQueryable();
 
-            if(!string.IsNullOrEmpty(name) )
+            try
             {
-                query = query.Where(x => x.Name.Contains(name));
+                var query = _context.Products.AsQueryable();
+
+                if (!string.IsNullOrEmpty(name))
+                {
+                    query = query.Where(x => x.Name.Contains(name));
+                }
+
+                if (!string.IsNullOrEmpty(category))
+                {
+                    query = query.Where(x => x.Name.Contains(category));
+                }
+
+                if (minPrice.HasValue)
+                {
+                    query = query.Where(x => x.Price >= minPrice.Value);
+                }
+
+                if (maxPrice.HasValue)
+                {
+                    query = query.Where(x => x.Price <= maxPrice.Value);
+                }
+
+                var products = await query.ToListAsync();
+
+                return Ok(products);
+            }
+            catch(Exception ex) {
+                return BadRequest(ex.Message);
             }
 
-            if (!string.IsNullOrEmpty(category))
-            {
-                query = query.Where(x => x.Name.Contains(category));
-            }
-
-            if (minPrice.HasValue)
-            {
-                query = query.Where(x => x.Price >= minPrice.Value);
-            }
-
-            if (maxPrice.HasValue)
-            {
-                query = query.Where(x => x.Price <= maxPrice.Value);
-            }
-
-            var products = await query.ToListAsync();
-
-            return Ok(products);
         }
 
         // Get a specific product by ID.
@@ -62,14 +70,22 @@ namespace EcommerceAPI.Controllers
         [HttpGet("GetProductById/{id}")]
         public async Task<ActionResult<Product>> GetProductById([FromRoute] string id)
         {
-            var product = await _context.Products.FindAsync(id);
-
-            if(product == null)
+            try
             {
-                return NotFound("Product could not be found");
+                var product = await _context.Products.FindAsync(id);
+
+                if (product == null)
+                {
+                    return NotFound("Product could not be found");
+                }
+
+                return Ok(product);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
 
-            return Ok(product);
         }
 
         // Create a new product.
@@ -78,22 +94,29 @@ namespace EcommerceAPI.Controllers
         [HttpPost("CreateProduct")]
         public async Task<ActionResult<Product>> CreateProduct([FromBody] ProductCreateDTO productCreateDTO)
         {
-            // Mapping from ProductCreateDto to Product entity
-            var product = new Product
+            try
             {
-                Name = productCreateDTO.Name,
-                Category = productCreateDTO.Category,
-                Price = productCreateDTO.Price,
-                Description = productCreateDTO.Description,
-                Stock = productCreateDTO.Stock,
-            };
+                // Mapping from ProductCreateDto to Product entity
+                var product = new Product
+                {
+                    Name = productCreateDTO.Name,
+                    Category = productCreateDTO.Category,
+                    Price = productCreateDTO.Price,
+                    Description = productCreateDTO.Description,
+                    Stock = productCreateDTO.Stock,
+                };
 
-            _context.Products.Add(product);
+                _context.Products.Add(product);
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            //Created with location header
-            return CreatedAtAction(nameof(GetProductById), new {id = product.Id}, product);
+                //Created with location header
+                return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, product);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
         }
 
@@ -103,17 +126,25 @@ namespace EcommerceAPI.Controllers
         [HttpPut("UpdateProductPrice/{id}")]
         public async Task<ActionResult> UpdateProductPrice([FromRoute] string id, [FromQuery] decimal price)
         {
-            var product = await _context.Products.FindAsync(id);
-
-            if(product == null)
+            try
             {
-                return NotFound("Product in question could be found");
+                var product = await _context.Products.FindAsync(id);
+
+                if (product == null)
+                {
+                    return NotFound("Product in question could be found");
+                }
+
+                product.Price = price;
+                await _context.SaveChangesAsync();
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
 
-            product.Price = price;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         // Demonstrates [FromQuery] for pagination
@@ -121,10 +152,17 @@ namespace EcommerceAPI.Controllers
         [HttpGet("paged")]
         public async Task<ActionResult<IList<Product>>> GetProductPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 5)
         {
+            try
+            {
+                var product = await _context.Products.Skip((pageNumber - 1) * pageSize).Take(pageSize).AsNoTracking().ToListAsync();
 
-            var product = await _context.Products.Skip((pageNumber - 1) * pageSize).Take(pageSize).AsNoTracking().ToListAsync();
+                return Ok(product);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
-            return Ok(product);
 
         }
 
@@ -132,23 +170,35 @@ namespace EcommerceAPI.Controllers
         // Demonstrates [FromForm]
         // Endpoint: POST /api/products/{id}/upload
         [HttpPost("{id}/upload")]
-        public async Task<ActionResult> UploadProductImage([FromRoute] int id, [FromForm] IFormFile file)
+        public async Task<ActionResult> UploadProductImage([FromRoute] int id, IFormFile file)
         {
-            if(file == null || file.Length == 0)
-                return BadRequest("No file uploaded");
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest("No file uploaded");
+                }                   
 
-            var product = await _context.Products.FindAsync(id);
+                var product = await _context.Products.FindAsync(id);
 
-            if(product == null)
-                return NotFound("Product in question does not exist");
+                if (product == null)
+                {
+                    return NotFound("Product in question does not exist");
+                }
+                   
+                // For demonstration, we'll just read the file name.
+                // In a real application, you'd save the file to storage and update the product's image URL.
 
-            // For demonstration, we'll just read the file name.
-            // In a real application, you'd save the file to storage and update the product's image URL.
+                var fileName = Path.GetFileName(file.FileName);
+                // TODO: Save the file and update product.ImageUrl
 
-            var fileName = Path.GetFileName(file.FileName);
-            // TODO: Save the file and update product.ImageUrl
+                return Ok(new { Message = "Image uploaded successfully", FileName = fileName });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
-            return Ok(new { Message = "Image uploaded successfully", FileName = fileName });
 
         }
     }

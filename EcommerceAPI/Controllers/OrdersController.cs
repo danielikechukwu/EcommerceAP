@@ -25,63 +25,71 @@ namespace EcommerceAPI.Controllers
         [HttpPost("CreateOrder")]
         public async Task<ActionResult<Order>> CreateOrder([FromBody] OrderDTO orderDto)
         {
-            // Validate Customer existence
-            var customer = _context.Customer.FindAsync(orderDto.CustomerId);
 
-            if(customer == null)
+            try
             {
-                return BadRequest("Customer does not exist");
-            }
+                // Validate Customer existence
+                var customer = await _context.Customer.FindAsync(orderDto.CustomerId);
 
-            var order = new Order
-            {
-                CustomerId = orderDto.CustomerId,
-                OrderDate = DateTime.UtcNow,
-                OrderStatus = "Processing",
-                OrderAmount = 0, //Will calculate based on OrderItems
-                OrderItems = new List<OrderItem>()
-            };
-
-            decimal totalAmount = 0;
-
-            // Iterate through order items and add to order
-            foreach (var item in orderDto.Items)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-
-                if (product == null)
+                if (customer == null)
                 {
-                    return BadRequest($"Product with ID {item.ProductId} does not exist");
+                    return BadRequest("Customer does not exist");
                 }
 
-                if(product.Stock < item.Quantity)
+                var order = new Order
                 {
-                    return BadRequest($"Insufficient stock for product {product.Name}");
-                }
-
-                //Deduct stock
-                product.Stock -= item.Quantity;
-
-                totalAmount += item.Quantity * product.Price;
-
-                //Create order item
-                var orderItem = new OrderItem
-                {
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity,
-                    UnitPrice = product.Price,
+                    CustomerId = orderDto.CustomerId,
+                    OrderDate = DateTime.UtcNow,
+                    OrderStatus = "Processing",
+                    OrderAmount = 0, //Will calculate based on OrderItems
+                    OrderItems = new List<OrderItem>()
                 };
 
-                order.OrderItems.Add(orderItem);
+                decimal totalAmount = 0;
+
+                // Iterate through order items and add to order
+                foreach (var item in orderDto.Items)
+                {
+                    var product = await _context.Products.FindAsync(item.ProductId);
+
+                    if (product == null)
+                    {
+                        return BadRequest($"Product with ID {item.ProductId} does not exist");
+                    }
+
+                    if (product.Stock < item.Quantity)
+                    {
+                        return BadRequest($"Insufficient stock for product {product.Name}");
+                    }
+
+                    //Deduct stock
+                    product.Stock -= item.Quantity;
+
+                    totalAmount += item.Quantity * product.Price;
+
+                    //Create order item
+                    var orderItem = new OrderItem
+                    {
+                        ProductId = item.ProductId,
+                        Quantity = item.Quantity,
+                        UnitPrice = product.Price,
+                    };
+
+                    order.OrderItems.Add(orderItem);
+                }
+
+                order.OrderAmount = totalAmount;
+
+                _context.Order.Add(order);
+
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, order);
             }
-
-            order.OrderAmount = totalAmount;
-
-            _context.Order.Add(order);
-
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id}, order);
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
         }
 
@@ -91,18 +99,27 @@ namespace EcommerceAPI.Controllers
         [HttpGet("GetOrderById/{id}")]
         public async Task<ActionResult<Order>> GetOrderById([FromRoute] int id)
         {
-            var order = await _context.Order
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product)
-                .Include(o => o.Customer)
-                .FirstOrDefaultAsync(o => o.Id == id);
 
-            if(order == null)
+            try
             {
-                return NotFound($"The searched Order with ID {id}, could not be found");
+                var order = await _context.Order
+    .Include(o => o.OrderItems)
+    .ThenInclude(oi => oi.Product)
+    .Include(o => o.Customer)
+    .FirstOrDefaultAsync(o => o.Id == id);
+
+                if (order == null)
+                {
+                    return NotFound($"The searched Order with ID {id}, could not be found");
+                }
+
+                return Ok(order);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
 
-            return Ok(order);
         }
     }
 }
